@@ -355,7 +355,13 @@ export default function EmergencyActiveScreen({
       </div>
 
       {/* Chat */}
-      <ChatInterface chatHistory={chatHistory} onUpdateChatHistory={onUpdateChatHistory} />
+      <ChatInterface
+        chatHistory={chatHistory}
+        onUpdateChatHistory={onUpdateChatHistory}
+        naloxoneGiven={naloxoneGiven}
+        visionResult={visionResult}
+        userName={userName}
+      />
 
       {/* Alert Contacts Modal */}
       {showAlertModal && (

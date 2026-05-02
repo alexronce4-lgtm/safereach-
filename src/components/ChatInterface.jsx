@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { CLAUDE_MODEL, REACH_SYSTEM_PROMPT } from '../config'
+import { CLAUDE_MODEL, buildSystemPrompt, REACH_FALLBACKS } from '../config'
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
@@ -27,16 +27,14 @@ function speak(text) {
     : trySpeak()
 }
 
-async function callReach(messages) {
+async function callReach(messages, systemPrompt) {
   const resp = await fetch('/api/claude/v1/messages', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 220,
-      system: REACH_SYSTEM_PROMPT,
+      max_tokens: 280,
+      system: systemPrompt,
       messages: messages.map(({ role, content }) => ({ role, content })),
     }),
   })
@@ -49,7 +47,7 @@ async function callReach(messages) {
   return data.content[0].text
 }
 
-export default function ChatInterface({ chatHistory, onUpdateChatHistory }) {
+export default function ChatInterface({ chatHistory, onUpdateChatHistory, naloxoneGiven, visionResult, userName }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [listening, setListening] = useState(false)
@@ -82,22 +80,22 @@ export default function ChatInterface({ chatHistory, onUpdateChatHistory }) {
     onUpdateChatHistory(next)
     setInput('')
     setLoading(true)
+    const systemPrompt = buildSystemPrompt({ naloxoneGiven, visionResult, userName })
     try {
-      const reply = await callReach(next.map(({ role, content }) => ({ role, content })))
+      const reply = await callReach(next.map(({ role, content }) => ({ role, content })), systemPrompt)
       const aiMsg = { role: 'assistant', content: reply, id: Date.now() + 1 }
       onUpdateChatHistory([...next, aiMsg])
       speak(reply)
     } catch (err) {
       console.error('Reach API error:', err)
-      // Demo fallback — never show a broken state to the audience
-      const fallback = "Stay with me. Help is on the way. Try to stay awake."
+      const fallback = REACH_FALLBACKS[next.length % REACH_FALLBACKS.length]
       const fallbackMsg = { role: 'assistant', content: fallback, id: Date.now() + 1 }
       onUpdateChatHistory([...next, fallbackMsg])
       speak(fallback)
     } finally {
       setLoading(false)
     }
-  }, [chatHistory, loading, onUpdateChatHistory])
+  }, [chatHistory, loading, onUpdateChatHistory, naloxoneGiven, visionResult, userName])
 
   // Keep a live ref so recognition callbacks always see the latest sendMessage
   sendMessageRef.current = sendMessage
