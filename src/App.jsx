@@ -25,12 +25,16 @@ export default function App() {
   const [visionResult, setVisionResult] = useState(null)
   const [familyJoinCode, setFamilyJoinCode] = useState('')
   const [familyMemberName, setFamilyMemberName] = useState('')
+  const [familyUrlParams, setFamilyUrlParams] = useState({})
   const [urlCode, setUrlCode] = useState('')
+  const [urlParams, setUrlParams] = useState({})
 
   useEffect(() => {
     const match = window.location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i)
     if (match) {
+      const p = Object.fromEntries(new URLSearchParams(window.location.search))
       setUrlCode(match[1].toUpperCase())
+      setUrlParams(p)
       setScreen('familyJoin')
       window.history.replaceState(null, '', '/')
     }
@@ -86,10 +90,12 @@ export default function App() {
         <FamilyJoinScreen
           key="familyJoin"
           initialCode={urlCode}
+          urlParams={urlParams}
           onBack={() => setScreen('home')}
-          onJoin={(code, name) => {
+          onJoin={(code, name, params) => {
             setFamilyJoinCode(code)
             setFamilyMemberName(name)
+            setFamilyUrlParams(params || {})
             setScreen('familyDash')
           }}
         />
@@ -101,6 +107,7 @@ export default function App() {
           key="familyDash"
           sessionCode={familyJoinCode}
           memberName={familyMemberName}
+          urlParams={familyUrlParams}
           onBack={() => setScreen('home')}
         />
       )

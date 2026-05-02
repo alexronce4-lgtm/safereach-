@@ -150,7 +150,9 @@ export default function EmergencyActiveScreen({
     try { loc = await getLocation() } catch { setGpsError('Location unavailable — sharing without GPS.') }
     finally { setGpsLoading(false) }
 
-    const joinLink = `${window.location.origin}/join/${sessionCode}`
+    const params = new URLSearchParams({ name: userName || 'Someone' })
+    if (loc) { params.set('lat', loc.lat); params.set('lng', loc.lng) }
+    const joinLink = `${window.location.origin}/join/${sessionCode}?${params}`
     const mapsLink = loc ? `https://maps.google.com/?q=${loc.lat},${loc.lng}` : null
     const name = userName || 'Someone'
     const text = [

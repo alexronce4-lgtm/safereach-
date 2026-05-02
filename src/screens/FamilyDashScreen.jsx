@@ -5,8 +5,14 @@ import {
 } from '../utils/session'
 import { GOOGLE_MAPS_API_KEY } from '../config'
 
-export default function FamilyDashScreen({ sessionCode, memberName, onBack }) {
-  const [session, setSession] = useState(null)
+export default function FamilyDashScreen({ sessionCode, memberName, onBack, urlParams = {} }) {
+  const victimLocFromUrl = urlParams.lat ? { lat: parseFloat(urlParams.lat), lng: parseFloat(urlParams.lng) } : null
+  const victimNameFromUrl = urlParams.name || 'Someone'
+  const [session, setSession] = useState(victimLocFromUrl ? {
+    victimName: victimNameFromUrl,
+    victimLocation: victimLocFromUrl,
+    familyMembers: [], chatHistory: [], voiceMessages: [],
+  } : null)
   const [familyLoc, setFamilyLoc] = useState(null)
   const [eta, setEta] = useState(null)
   const [mapError, setMapError] = useState(false)
@@ -39,7 +45,7 @@ export default function FamilyDashScreen({ sessionCode, memberName, onBack }) {
   useEffect(() => {
     const tick = () => {
       const s = getSession(sessionCode)
-      if (!s) { setNotFound(true); return }
+      if (!s) { if (!victimLocFromUrl) setNotFound(true); return }
       setSession(s)
 
       // Update our location in session

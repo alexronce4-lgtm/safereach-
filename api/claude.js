@@ -1,6 +1,5 @@
 export default async function handler(req, res) {
-  if (req.method === 'GET') return res.json({ key: process.env.CLAUDE_API_KEY?.slice(0, 12) || 'NOT_SET' })
-  if (req.method !== 'POST') return res.status(405).end()
+if (req.method !== 'POST') return res.status(405).end()
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',

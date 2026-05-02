@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { getSession, addFamilyMember } from '../utils/session'
 
-export default function FamilyJoinScreen({ onBack, onJoin, initialCode = '' }) {
+export default function FamilyJoinScreen({ onBack, onJoin, initialCode = '', urlParams = {} }) {
   const [code, setCode] = useState(initialCode)
   const [name, setName] = useState('')
   const [error, setError] = useState(null)
@@ -22,16 +22,19 @@ export default function FamilyJoinScreen({ onBack, onJoin, initialCode = '' }) {
     setLoading(true)
     setError(null)
 
-    await new Promise(r => setTimeout(r, 300)) // brief UX pause
+    await new Promise(r => setTimeout(r, 300))
 
-    const session = getSession(code)
-    if (!session) {
-      setError('Session not found. Check the code and try again.')
-      setLoading(false)
-      return
+    // Skip localStorage check if joining via URL link (cross-device)
+    const fromUrl = !!initialCode
+    if (!fromUrl) {
+      const session = getSession(code)
+      if (!session) {
+        setError('Session not found. Check the code and try again.')
+        setLoading(false)
+        return
+      }
     }
 
-    // Try to get location
     let loc = null
     try {
       loc = await new Promise((resolve, reject) => {
@@ -41,13 +44,11 @@ export default function FamilyJoinScreen({ onBack, onJoin, initialCode = '' }) {
           { timeout: 6000 }
         )
       })
-    } catch {
-      /* location optional */
-    }
+    } catch { /* location optional */ }
 
     addFamilyMember(code, { name: name.trim(), location: loc })
     setLoading(false)
-    onJoin(code, name.trim())
+    onJoin(code, name.trim(), urlParams)
   }
 
   return (
