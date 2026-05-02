@@ -27,6 +27,27 @@ function speak(text) {
     : trySpeak()
 }
 
+function smartFallback(text, history) {
+  const t = text.toLowerCase()
+
+  const nameMatch = text.match(/(?:i'?m|i am|this is|my name is)\s+([A-Za-z]+)/i)
+  if (nameMatch) return `Hey ${nameMatch[1]}! I'm Reach — I'm right here with you. Tell me what's happening.`
+
+  if (/help/.test(t)) return "I'm right here. Tell me what you're seeing — I'll guide you step by step."
+  if (/breath|breathing|can't breathe|not breathing/.test(t)) return "If they've stopped breathing, tilt their head back, lift the chin, and give 2 slow breaths. I'm with you."
+  if (/pain|hurts|hurt/.test(t)) return "Tell me where the pain is. That helps me guide you better. You're doing great."
+  if (/unconscious|won't wake|not waking|passed out/.test(t)) return "Roll them onto their side — chin forward — to keep the airway open. Call 911 now if you haven't."
+  if (/naloxone|narcan/.test(t)) return "Give one spray into one nostril now. Wait 2-3 minutes — if no improvement, a second dose can help."
+  if (/scared|panic|don't know|freaking/.test(t)) return "Take one breath. You're not alone — I'm here. Are they conscious? Are they breathing?"
+  if (/911|ambulance|called/.test(t)) return "Good. Stay on the line with 911. Keep them on their side and keep watching their breathing."
+  if (/okay|ok|better|fine/.test(t)) return "Good — keep watching their breathing and don't leave them alone. Stay close until help arrives."
+  if (/what do|what should/.test(t)) return "First: call 911. Second: keep them on their side. Third: give naloxone if you have it. I'm right here."
+  if (/awake|conscious|responding/.test(t)) return "Good — keep talking to them. Ask them to squeeze your hand. Help is on the way."
+  if (/tired|sleepy|can't stay awake/.test(t)) return "Stay with me. Keep talking to them — use their name. Loud voices help keep people awake."
+
+  return REACH_FALLBACKS[history.length % REACH_FALLBACKS.length]
+}
+
 async function callReach(messages, systemPrompt) {
   const resp = await fetch('/api/claude/v1/messages', {
     method: 'POST',
@@ -88,7 +109,7 @@ export default function ChatInterface({ chatHistory, onUpdateChatHistory, naloxo
       speak(reply)
     } catch (err) {
       console.error('Reach API error:', err)
-      const fallback = REACH_FALLBACKS[next.length % REACH_FALLBACKS.length]
+      const fallback = smartFallback(text.trim(), next)
       const fallbackMsg = { role: 'assistant', content: fallback, id: Date.now() + 1 }
       onUpdateChatHistory([...next, fallbackMsg])
       speak(fallback)
