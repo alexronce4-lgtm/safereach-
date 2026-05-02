@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   getSession, updateFamilyLocation, addVoiceMessage,
-  addFamilyMessage, calculateETA, buildDarkMapUrl,
+  addFamilyMessage, calculateETA,
 } from '../utils/session'
-import { GOOGLE_MAPS_API_KEY } from '../config'
+import LiveMap from '../components/LiveMap'
 
 export default function FamilyDashScreen({ sessionCode, memberName, onBack, urlParams = {} }) {
   const victimLocFromUrl = urlParams.lat ? { lat: parseFloat(urlParams.lat), lng: parseFloat(urlParams.lng) } : null
@@ -15,7 +15,6 @@ export default function FamilyDashScreen({ sessionCode, memberName, onBack, urlP
   } : null)
   const [familyLoc, setFamilyLoc] = useState(null)
   const [eta, setEta] = useState(null)
-  const [mapError, setMapError] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recorderChunks, setRecorderChunks] = useState([])
   const [sending, setSending] = useState(false)
@@ -28,17 +27,20 @@ export default function FamilyDashScreen({ sessionCode, memberName, onBack, urlP
   const streamRef = useRef(null)
   const chatEndRef = useRef(null)
 
-  // Get own location
+  // Track own location live with watchPosition
   useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
+    if (!navigator.geolocation) return
+    const id = navigator.geolocation.watchPosition(
       p => {
         const loc = { lat: p.coords.latitude, lng: p.coords.longitude }
         setFamilyLoc(loc)
         familyLocRef.current = loc
         updateFamilyLocation(sessionCode, memberName, loc)
       },
-      () => { /* location optional */ }
+      () => { /* location optional */ },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
     )
+    return () => navigator.geolocation.clearWatch(id)
   }, [sessionCode, memberName])
 
   // Poll session every 5 seconds
@@ -121,9 +123,6 @@ export default function FamilyDashScreen({ sessionCode, memberName, onBack, urlP
 
   const victimLoc = session?.victimLocation
   const chatMsgs = session?.chatHistory || []
-  const mapUrl = victimLoc
-    ? buildDarkMapUrl(victimLoc, familyLoc, GOOGLE_MAPS_API_KEY)
-    : null
 
   return (
     <div style={s.screen}>
@@ -161,46 +160,30 @@ export default function FamilyDashScreen({ sessionCode, memberName, onBack, urlP
             )}
           </div>
 
-          {victimLoc ? (
-            mapError ? (
-              <div style={s.mapFallback}>
-                <div style={s.mapCoords}>
-                  📍 {victimLoc.lat.toFixed(5)}, {victimLoc.lng.toFixed(5)}
-                </div>
-                <a
-                  href={`https://maps.google.com/?q=${victimLoc.lat},${victimLoc.lng}`}
-                  target="_blank" rel="noreferrer"
-                  style={s.mapsLink}
-                >
-                  Open in Google Maps →
-                </a>
-              </div>
+          <div style={s.mapWrap}>
+            {victimLoc ? (
+              <LiveMap
+                myLocation={familyLoc}
+                victimLocation={victimLoc}
+                style={{ height: 220 }}
+              />
             ) : (
-              <div style={s.mapWrap}>
-                <img
-                  src={mapUrl}
-                  alt="Location map"
-                  style={s.mapImg}
-                  onError={() => setMapError(true)}
-                />
-                <div style={s.mapOverlay}>
-                  <span style={s.mapLegendItem}>
-                    <span style={{ ...s.mapLegendDot, background: '#E8000D' }} /> Victim
-                  </span>
-                  {familyLoc && (
-                    <span style={s.mapLegendItem}>
-                      <span style={{ ...s.mapLegendDot, background: '#3B82F6' }} /> You
-                    </span>
-                  )}
-                </div>
+              <div style={s.mapWaiting}>
+                <div style={s.spinner} />
+                <span style={{ color: '#52525B', fontSize: 13 }}>Waiting for victim's location...</span>
               </div>
-            )
-          ) : (
-            <div style={s.mapWaiting}>
-              <div style={s.spinner} />
-              <span style={{ color: '#52525B', fontSize: 13 }}>Waiting for victim's location...</span>
+            )}
+            <div style={s.mapOverlay}>
+              <span style={s.mapLegendItem}>
+                <span style={{ ...s.mapLegendDot, background: '#E8000D' }} /> Victim
+              </span>
+              {familyLoc && (
+                <span style={s.mapLegendItem}>
+                  <span style={{ ...s.mapLegendDot, background: '#3B82F6' }} /> You
+                </span>
+              )}
             </div>
-          )}
+          </div>
 
           {eta && (
             <div style={s.etaRow}>

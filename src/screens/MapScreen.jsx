@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { GOOGLE_MAPS_API_KEY } from '../config'
 import { haversineDistance } from '../utils/session'
+import LiveMap from '../components/LiveMap'
 
 const DEMO_PLACES = [
   { id: 'h', name: 'Nearest Hospital',      icon: '🏥', color: '#E8000D', dlat:  0.0080, dlng:  0.0060 },
@@ -94,7 +94,6 @@ function FallbackMap({ location, places }) {
 
 export default function MapScreen({ location, onUpdateLocation, onGoToEmergency }) {
   const [age, setAge] = useState(0)
-  const [mapImgError, setMapImgError] = useState(false)
   const [gpsStatus, setGpsStatus] = useState('getting')
   const lastUpdateRef = useRef(Date.now())
 
@@ -121,8 +120,6 @@ export default function MapScreen({ location, onUpdateLocation, onGoToEmergency 
     const loc = location ? { lat: location.lat + p.dlat, lng: location.lng + p.dlng } : null
     return { ...p, loc, dist: location && loc ? haversineDistance(location, loc) : null }
   })
-
-  const mapUrl = !mapImgError ? buildStaticMapUrl(location, GOOGLE_MAPS_API_KEY) : null
 
   async function shareLocation() {
     if (!location) return
@@ -158,11 +155,7 @@ export default function MapScreen({ location, onUpdateLocation, onGoToEmergency 
 
       <div style={s.body}>
         <div style={s.mapCard}>
-          {location && mapUrl ? (
-            <img src={mapUrl} alt="Map" style={s.mapImg} onError={() => setMapImgError(true)} />
-          ) : (
-            <FallbackMap location={location} places={places} />
-          )}
+          <LiveMap myLocation={location} style={{ height: 260 }} />
         </div>
 
         <div style={s.coordsRow}>
