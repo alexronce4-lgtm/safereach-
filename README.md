@@ -1,16 +1,54 @@
-# React + Vite
+# SafeReach
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Emergency response app for overdose situations. Built for first responders, bystanders, and families.
 
-Currently, two official plugins are available:
+**Live:** https://safereach-theta.vercel.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## What it does
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**SOS** — tap the big button to start an emergency session. A timer starts and an AI companion (Reach) guides you step by step.
 
-## Expanding the ESLint configuration
+**Alert Contacts** — sends a message with your live GPS location and a one-tap join link to your emergency contacts.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**Symptom Scan** — take a photo, AI analyzes it and gives a risk level (HIGH / MEDIUM / LOW) + immediate actions to take.
+
+**Live Map** — see nearby hospitals, pharmacies, and urgent care centers as markers on a real-time map. Tap any marker to get directions.
+
+**Family Dashboard** — when someone clicks your alert link, they see your live location on a map, can message you, send voice notes, or call 911.
+
+**Reach AI** — chat companion that guides the person in crisis. Knows if naloxone was given, what the camera scan found, and adapts its responses.
+
+---
+
+## Join flow
+
+1. Victim taps SOS → alert sent with join link
+2. Family/friend clicks link → enters their name → instantly sees victim's location on live map
+3. No code to type, no account needed
+
+---
+
+## Stack
+
+- React + Vite
+- Leaflet (live maps)
+- Claude AI (chat + vision)
+- OpenStreetMap Overpass API (nearby POIs)
+- Vercel (hosting + serverless API)
+
+---
+
+## Run locally
+
+```bash
+npm install
+npm run dev
+```
+
+Add a `.env` file:
+```
+VITE_CLAUDE_API_KEY=your_key
+VITE_GOOGLE_MAPS_API_KEY=your_key
+```
