@@ -1,16 +1,26 @@
 import { useState, useRef } from 'react'
 import { CLAUDE_MODEL } from '../config'
 
-const VISION_PROMPT = `You are helping a bystander describe what they see so they can communicate it to 911 or EMS. Describe only what is visually observable in this image. Use this exact format:
+const VISION_PROMPT = `You are an emergency triage assistant. Look at this image and assess the emergency situation. DO NOT describe the person's physical appearance (no hair color, skin tone, etc.). Focus ONLY on signs relevant to a medical emergency.
 
-Lip color: [describe color you see]
-Eyes: [open / closed / not visible]
-Visible movement: [yes / no / unclear]
-Skin color: [describe what you see]
+Respond in this exact JSON format:
+{
+  "risk": "HIGH" | "MEDIUM" | "LOW",
+  "summary": "One sentence: what is happening and why it is urgent",
+  "signs": [
+    "Consciousness: [Unresponsive / Responsive / Unclear]",
+    "Breathing: [Not visible / Appears normal / Labored / Unclear]",
+    "Scene: [describe substances, pills, bottles, or hazards visible]",
+    "Position: [describe body position — face down, on side, etc.]"
+  ],
+  "actions": [
+    "Most urgent action first",
+    "Second action",
+    "Third action"
+  ]
+}
 
-Visual summary: one sentence describing the person's visible appearance.
-
-Note: This is a visual description only to help communicate with emergency services. Always call 911.`
+Only return the JSON. No other text.`
 
 async function analyzeImage(base64Data, mediaType) {
   const resp = await fetch('/api/claude/v1/messages', {
@@ -18,7 +28,7 @@ async function analyzeImage(base64Data, mediaType) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 150,
+      max_tokens: 400,
       messages: [{
         role: 'user',
         content: [
@@ -204,41 +214,80 @@ export default function CameraScreen({ onBack, onResult, location }) {
               <div style={s.errorCard}>⚠️ {error}</div>
             )}
 
-            {result && (
-              <div style={s.resultArea}>
-                <div style={s.resultCard}>
-                  <div style={s.resultHeader}>
-                    <div style={s.resultDot} />
-                    <span style={s.resultLabel}>AI Visual Observation</span>
-                    <span style={s.resultTime}>{timestamp}</span>
+            {result && (() => {
+              let parsed = null
+              try { parsed = JSON.parse(result.replace(/```json|```/g, '').trim()) } catch { /* raw fallback */ }
+
+              const riskColor = { HIGH: '#E8000D', MEDIUM: '#F59E0B', LOW: '#22C55E' }[parsed?.risk] || '#A1A1AA'
+              const riskBg = { HIGH: 'rgba(232,0,13,0.12)', MEDIUM: 'rgba(245,158,11,0.1)', LOW: 'rgba(34,197,94,0.1)' }[parsed?.risk] || 'rgba(255,255,255,0.05)'
+
+              return (
+                <div style={s.resultArea}>
+                  {parsed ? (
+                    <>
+                      {/* Risk level banner */}
+                      <div style={{ ...s.riskBanner, background: riskBg, border: `1px solid ${riskColor}40` }}>
+                        <div style={{ ...s.riskBadge, background: riskColor }}>
+                          {parsed.risk === 'HIGH' ? '🚨' : parsed.risk === 'MEDIUM' ? '⚠️' : '✓'} {parsed.risk} RISK
+                        </div>
+                        <p style={s.riskSummary}>{parsed.summary}</p>
+                      </div>
+
+                      {/* Signs */}
+                      <div style={s.sectionCard}>
+                        <div style={s.sectionTitle}>OBSERVED SIGNS</div>
+                        {parsed.signs?.map((sign, i) => (
+                          <div key={i} style={s.signRow}>
+                            <span style={s.signDot} />
+                            <span style={s.signText}>{sign}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{ ...s.sectionCard, borderColor: 'rgba(232,0,13,0.2)' }}>
+                        <div style={{ ...s.sectionTitle, color: '#E8000D' }}>IMMEDIATE ACTIONS</div>
+                        {parsed.actions?.map((action, i) => (
+                          <div key={i} style={s.actionRow}>
+                            <span style={s.actionNum}>{i + 1}</span>
+                            <span style={s.actionText}>{action}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    /* Fallback: raw text */
+                    <div style={s.sectionCard}>
+                      <div style={s.sectionTitle}>AI OBSERVATION</div>
+                      <p style={s.resultText}>{result}</p>
+                    </div>
+                  )}
+
+                  <div style={s.warnCard}>
+                    ⚠️ Visual observation only — not a medical diagnosis. Always call 911.
                   </div>
-                  <p style={s.resultText}>{result}</p>
-                </div>
 
-                <div style={s.warnCard}>
-                  ⚠️ Approximate visual observation only — not a medical diagnosis. Always call 911.
-                </div>
-
-                <div style={s.briefingCard}>
-                  <div style={s.briefingHeader}>
-                    <span style={s.briefingTitle}>Hospital Briefing</span>
-                    <span style={s.briefingSubtitle}>Share with EMS or staff on arrival</span>
+                  <div style={s.briefingCard}>
+                    <div style={s.briefingHeader}>
+                      <span style={s.briefingTitle}>Hospital Briefing</span>
+                      <span style={s.briefingSubtitle}>Share with EMS or staff on arrival</span>
+                    </div>
+                    <button style={s.briefingBtn} onClick={copyBriefing}>
+                      {briefingCopied ? '✓ Copied to clipboard' : 'Copy Hospital Briefing'}
+                    </button>
                   </div>
-                  <button style={s.briefingBtn} onClick={copyBriefing}>
-                    {briefingCopied ? '✓ Copied to clipboard' : 'Copy Hospital Briefing'}
-                  </button>
-                </div>
 
-                <div style={s.resultActions}>
-                  <button style={s.retakeBtn} onClick={() => { setPreview(null); setFile(null); setResult(null) }}>
-                    New Photo
-                  </button>
-                  <button style={s.saveBtn} onClick={() => { onResult(result) }}>
-                    Save &amp; Return
-                  </button>
+                  <div style={s.resultActions}>
+                    <button style={s.retakeBtn} onClick={() => { setPreview(null); setFile(null); setResult(null) }}>
+                      New Photo
+                    </button>
+                    <button style={s.saveBtn} onClick={() => onResult(parsed?.summary || result)}>
+                      Save &amp; Return
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         )}
       </div>
@@ -275,12 +324,18 @@ const s = {
   analyzeBtn: { flex: 2, padding: '13px', background: '#E8000D', border: 'none', borderRadius: 13, fontSize: 15, fontWeight: 700, color: '#fff', cursor: 'pointer', boxShadow: '0 4px 16px rgba(232,0,13,0.35)' },
   errorCard: { background: 'rgba(232,0,13,0.1)', border: '1px solid rgba(232,0,13,0.25)', borderRadius: 12, padding: '12px 14px', fontSize: 13, color: '#E8000D' },
   resultArea: { display: 'flex', flexDirection: 'column', gap: 10 },
-  resultCard: { background: '#161616', borderRadius: 16, padding: '14px', border: '1px solid rgba(255,255,255,0.07)', animation: 'fade-up 0.3s ease' },
-  resultHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 },
-  resultDot: { width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 },
-  resultLabel: { flex: 1, fontSize: 11, fontWeight: 700, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.8px' },
-  resultTime: { fontSize: 11, color: '#52525B' },
-  resultText: { fontSize: 15, color: '#E5E5E5', lineHeight: 1.6 },
+  riskBanner: { borderRadius: 16, padding: '14px', animation: 'fade-up 0.25s ease' },
+  riskBadge: { display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 800, color: '#fff', letterSpacing: '1px', marginBottom: 8 },
+  riskSummary: { fontSize: 15, fontWeight: 600, color: '#fff', lineHeight: 1.5, margin: 0 },
+  sectionCard: { background: '#161616', borderRadius: 14, padding: '14px', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', gap: 8, animation: 'fade-up 0.3s ease' },
+  sectionTitle: { fontSize: 10, fontWeight: 800, color: '#52525B', letterSpacing: '1.5px', marginBottom: 2 },
+  signRow: { display: 'flex', alignItems: 'flex-start', gap: 10 },
+  signDot: { width: 6, height: 6, borderRadius: '50%', background: '#52525B', marginTop: 6, flexShrink: 0 },
+  signText: { fontSize: 14, color: '#E5E5E5', lineHeight: 1.5 },
+  actionRow: { display: 'flex', alignItems: 'flex-start', gap: 10 },
+  actionNum: { width: 22, height: 22, borderRadius: '50%', background: '#E8000D', color: '#fff', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  actionText: { fontSize: 14, color: '#fff', lineHeight: 1.5, fontWeight: 500 },
+  resultText: { fontSize: 14, color: '#E5E5E5', lineHeight: 1.6, margin: 0 },
   warnCard: { background: 'rgba(232,0,13,0.08)', border: '1px solid rgba(232,0,13,0.2)', borderRadius: 12, padding: '10px 14px', fontSize: 12, color: '#E8000D', fontWeight: 600, lineHeight: 1.5, animation: 'fade-up 0.3s ease' },
   briefingCard: { background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 14, padding: '14px', animation: 'fade-up 0.35s ease' },
   briefingHeader: { marginBottom: 10 },
