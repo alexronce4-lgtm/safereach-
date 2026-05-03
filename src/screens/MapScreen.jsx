@@ -157,7 +157,7 @@ export default function MapScreen({ location, onUpdateLocation, onGoToEmergency 
 
       <div style={s.body}>
         <div style={s.mapCard}>
-          <LiveMap myLocation={location} style={{ height: 260 }} />
+          <LiveMap myLocation={location} showNearby style={{ height: 260 }} />
         </div>
 
         <div style={s.coordsRow}>
