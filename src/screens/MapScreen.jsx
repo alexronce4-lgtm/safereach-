@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { haversineDistance } from '../utils/session'
 import LiveMap from '../components/LiveMap'
 
-const DEMO_PLACES = [
-  { id: 'h', name: 'Nearest Hospital',      icon: '🏥', color: '#E8000D', dlat:  0.0080, dlng:  0.0060 },
-  { id: 'n', name: 'Naloxone Access Point', icon: '💊', color: '#22C55E', dlat: -0.0050, dlng:  0.0090 },
-  { id: 'p', name: 'Pharmacy',              icon: '🏪', color: '#F59E0B', dlat:  0.0030, dlng: -0.0070 },
+const NEARBY_PLACES = [
+  { id: 'h', name: 'Nearest Hospital',      icon: '🏥', color: '#E8000D', query: 'hospital' },
+  { id: 'n', name: 'Naloxone / Narcan',     icon: '💊', color: '#22C55E', query: 'pharmacy+naloxone+narcan' },
+  { id: 'p', name: 'Pharmacy',              icon: '🏪', color: '#F59E0B', query: 'pharmacy' },
+  { id: 'u', name: 'Urgent Care',           icon: '🩺', color: '#3B82F6', query: 'urgent+care' },
 ]
 
 function buildStaticMapUrl(loc, apiKey) {
@@ -116,10 +116,12 @@ export default function MapScreen({ location, onUpdateLocation, onGoToEmergency 
     return () => clearInterval(t)
   }, [])
 
-  const places = DEMO_PLACES.map(p => {
-    const loc = location ? { lat: location.lat + p.dlat, lng: location.lng + p.dlng } : null
-    return { ...p, loc, dist: location && loc ? haversineDistance(location, loc) : null }
-  })
+  const places = NEARBY_PLACES.map(p => ({
+    ...p,
+    mapsUrl: location
+      ? `https://www.google.com/maps/search/${p.query}/@${location.lat},${location.lng},14z`
+      : `https://www.google.com/maps/search/${p.query}`,
+  }))
 
   async function shareLocation() {
     if (!location) return
@@ -177,17 +179,14 @@ export default function MapScreen({ location, onUpdateLocation, onGoToEmergency 
               <button
                 key={p.id}
                 style={s.placeRow}
-                onClick={() => {
-                  const dest = p.loc
-                  if (dest) window.open(`https://maps.google.com/dir/?api=1&destination=${dest.lat},${dest.lng}`, '_blank')
-                }}
+                onClick={() => window.open(p.mapsUrl, '_blank')}
               >
                 <div style={{ ...s.placeIconWrap, background: p.color + '18', border: `1px solid ${p.color}40` }}>
                   <span style={s.placeIcon}>{p.icon}</span>
                 </div>
                 <div style={s.placeInfo}>
                   <span style={s.placeName}>{p.name}</span>
-                  <span style={s.placeDist}>{p.dist != null ? `${p.dist} mi away` : 'Tap to navigate'}</span>
+                  <span style={s.placeDist}>Tap to find nearby →</span>
                 </div>
                 <span style={s.placeArrow}>→</span>
               </button>
