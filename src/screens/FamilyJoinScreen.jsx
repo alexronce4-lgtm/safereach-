@@ -4,7 +4,7 @@ import { getSession, addFamilyMember } from '../utils/session'
 export default function FamilyJoinScreen({ onBack, onJoin, initialCode = '', urlParams = {} }) {
   const fromLink = !!initialCode
   const [code, setCode] = useState(initialCode)
-  const [name, setName] = useState('')
+  const [name, setName] = useState(() => fromLink ? (localStorage.getItem('sr_userName') || 'Helper') : '')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -107,9 +107,10 @@ export default function FamilyJoinScreen({ onBack, onJoin, initialCode = '', url
           </div>
         )}
 
-        {/* Name input */}
+        {/* Name — editable but pre-filled when from link */}
         <div style={s.nameSection}>
-          <label style={s.nameLabel}>Your name</label>
+          {fromLink && <label style={s.nameLabel}>Your name (optional)</label>}
+          {!fromLink && <label style={s.nameLabel}>Your name</label>}
           <input
             style={s.nameInput}
             value={name}
@@ -118,7 +119,8 @@ export default function FamilyJoinScreen({ onBack, onJoin, initialCode = '', url
             onKeyDown={e => e.key === 'Enter' && isReady && handleJoin()}
             autoFocus={fromLink}
           />
-          <p style={s.nameHint}>Shown on the victim's screen when you join</p>
+          {fromLink && <p style={s.nameHint}>Change it or just tap Join →</p>}
+          {!fromLink && <p style={s.nameHint}>Shown on the victim's screen when you join</p>}
         </div>
 
         {error && <div style={s.errorCard}><span>⚠️</span> {error}</div>}
