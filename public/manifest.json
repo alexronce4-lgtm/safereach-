@@ -1,0 +1,18 @@
+{
+  "name": "SafeReach",
+  "short_name": "SafeReach",
+  "description": "Emergency response app for overdose situations",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
